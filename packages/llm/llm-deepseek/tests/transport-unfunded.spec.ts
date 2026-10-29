@@ -1,4 +1,5 @@
-import { providerError } from './transport'
+import { describe, expect, test } from 'vitest'
+import { providerError } from '../src/transport'
 
 describe('providerError', () => {
   test('classifies HTTP 503 as PROVIDER_UNFUNDED', () => {
