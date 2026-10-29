@@ -47,3 +47,16 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+
+# Add test artifacts
+*.spec.ts
+*.test.ts
+
+# Add log files
+*.log
+
+# Exclude investigation notes
+.agents/notes/provided/
+.agents/notes/proposed/
+.agents/notes/implemented/
+T27OS-*.md

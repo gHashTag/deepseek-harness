@@ -31,7 +31,8 @@ export function providerError(raw: unknown, status: number | undefined, headers?
   else if (status === 429 || type === 'rate_limit_error') code = 'RATE_LIMIT'
   else if (isContextWindowExceededError(detail)) code = 'CONTEXT_WINDOW_EXCEEDED'
   else if (status === 400 || status === 413 || type === 'invalid_request_error') code = 'INVALID_REQUEST'
-  else if ((status !== undefined && status >= 500) || ['api_error', 'overloaded_error'].includes(type)) code = 'SERVER'
+  else if (status === 503 || type === 'overloaded_error') code = 'PROVIDER_UNFUNDED'
+  else if ((status !== undefined && status >= 500) || ['api_error'].includes(type)) code = 'SERVER'
   else code = status === undefined ? 'SERVER' : `HTTP_${status}`
   const retry = headers?.get('retry-after')
   const delay = retry == null ? NaN : /^\d+(?:\.\d+)?$/u.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - Date.now()
