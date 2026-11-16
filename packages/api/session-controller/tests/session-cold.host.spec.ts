@@ -226,7 +226,9 @@ describe('sessions.list cold merge', () => {
       parentSessionId: 'session-parent',
       origin: 'subagent',
     })
-    expect(byId['missing-cwd']).toBeUndefined()
+    // A cold session without cwd (server session) is now visible in the list.
+    expect(byId['missing-cwd']).toMatchObject({ blank: false, updatedAt: 800, running: false })
+    expect(byId['missing-cwd']).not.toHaveProperty('cwd')
     // A cold seeded header reads the cache by header alone, like any other
     // cold row: the cache binds the lifecycle, and a listing never seeds a fold.
     expect(byId['seeded-cold']).toMatchObject({
