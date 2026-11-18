@@ -2,6 +2,15 @@
 
 DeepSeek Harness is an all-plugin Cordis agent harness. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
+## Repository boundary: t27 owns specs, DSH owns runtime
+
+Owner rule, 2026-11-18.
+
+- All work MUST be done in the t27 repository (`~/t27`), using the t27b language.
+- Do NOT write specs, tests, or implementation artifacts in the DSH repository.
+- DSH repository = runtime / integration only. t27 repository = SSOT for specs and tests.
+- If a change requires DSH integration, first create or update the `.t27` spec and its t27b tests in t27, then propose the minimal DSH-side change as a separate, explicitly owner-approved step.
+
 ## Pre-stable APIs and released Session data
 
 Public APIs are pre-stable; update every consumer. Follow [version/status](docs/session-format-status.md) and [type acknowledgements](docs/cookbook/reviewing-persistence-type-changes.md). [Adjacent migration](.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md) may add a version-named successor but never move, overwrite, or delete committed generations; predecessors imply neither fallback nor downgrade support. SQLite uses monotonic `SCHEMA_VERSION`.
