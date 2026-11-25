@@ -2305,7 +2305,7 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 ### `spawn_teammate`
 
-Create one named, durable teammate. Only the Team Lead may call this tool.
+Create one named, durable teammate. Only the Team Lead may call this tool. The call is idempotent by name: when a teammate with that name already exists, it is reused and returned with reused: true, no second teammate starts, and the prompt is not applied to it. Use send_message to steer a reused teammate.
 
 ```json
 {
@@ -2313,7 +2313,7 @@ Create one named, durable teammate. Only the Team Lead may call this tool.
   "properties": {
     "name": {
       "type": "string",
-      "description": "Unique lower-kebab-case teammate name."
+      "description": "Lower-kebab-case teammate name. A name already used in this Team reuses that teammate instead of creating one."
     },
     "description": {
       "type": "string",

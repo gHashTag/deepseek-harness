@@ -93,6 +93,7 @@ const SPAWN_VALUE_SCHEMA = {
   additionalProperties: false,
   properties: {
     member: { ...MEMBER_VIEW_SCHEMA, required: true },
+    reused: { type: 'boolean', required: true },
   },
 } as const
 
@@ -191,9 +192,9 @@ To message another teammate, use send_message({ target: "<teammate name>", messa
 
     register(scoped.tools.register(defineTool({
       name: 'spawn_teammate',
-      description: 'Create one named, durable teammate. Only the Team Lead may call this tool.',
+      description: 'Create one named, durable teammate. Only the Team Lead may call this tool. The call is idempotent by name: when a teammate with that name already exists, it is reused and returned with reused: true, no second teammate starts, and the prompt is not applied to it. Use send_message to steer a reused teammate.',
       parameters: {
-        name: { type: 'string', required: true, description: 'Unique lower-kebab-case teammate name.' },
+        name: { type: 'string', required: true, description: 'Lower-kebab-case teammate name. A name already used in this Team reuses that teammate instead of creating one.' },
         description: { type: 'string', required: true, description: 'Short description of the delegated responsibility.' },
         prompt: { type: 'string', required: true, description: 'Complete initial task for the teammate.' },
         context: {
@@ -214,7 +215,7 @@ To message another teammate, use send_message({ target: "<teammate name>", messa
           provider: context === 'fork' ? config.forkProvider : config.freshProvider,
           signal: exec.signal,
         })
-        return { member: modelMember(result.member) }
+        return { member: modelMember(result.member), reused: result.reused }
       },
     })))
 

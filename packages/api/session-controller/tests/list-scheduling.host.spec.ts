@@ -146,7 +146,7 @@ describe('Session-list work slices', () => {
     expect(yieldWork).toHaveBeenCalledTimes(1)
   })
 
-  it('includes skipped-record classification in the work budget', async () => {
+  it('includes cwd-less cold-record classification in the work budget', async () => {
     const h = await harness([
       { id: 'first', phase: 'cold', cwd: false },
       { id: 'second', phase: 'cold', cwd: false },
@@ -286,18 +286,18 @@ describe('Session-list work slices', () => {
     expect(h.trace).toEqual([])
   })
 
-  it('omits cwd-less cold rows but retains cwd-less attached Sessions', async () => {
+  it('retains cwd-less cold rows and cwd-less attached Sessions', async () => {
     const h = await harness([
-      { id: 'omitted-first', phase: 'cold', cwd: false },
-      { id: 'visible-cold', phase: 'cold' },
-      { id: 'visible-live', phase: 'live', cwd: false },
-      { id: 'omitted-last', phase: 'cold', cwd: false },
+      { id: 'cold-no-cwd-first', phase: 'cold', cwd: false },
+      { id: 'cold-with-cwd', phase: 'cold' },
+      { id: 'live-no-cwd', phase: 'live', cwd: false },
+      { id: 'cold-no-cwd-last', phase: 'cold', cwd: false },
     ])
 
     const items = await h.list.list()
 
-    expect(h.trace).toEqual(['live:visible-live', 'cold:visible-cold'])
-    expect(items.map(item => item.sessionId)).toEqual(['visible-live', 'visible-cold'])
+    expect(h.trace).toEqual(['live:live-no-cwd', 'cold:cold-no-cwd-first', 'cold:cold-with-cwd', 'cold:cold-no-cwd-last'])
+    expect(items.map(item => item.sessionId)).toEqual(['live-no-cwd', 'cold-no-cwd-first', 'cold-with-cwd', 'cold-no-cwd-last'])
     expect(items[0]).not.toHaveProperty('cwd')
   })
 
