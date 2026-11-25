@@ -238,7 +238,23 @@ describe('Team identity and provisioning', () => {
       ['fresh-worker', 'fresh', 'inactive'],
     ])
     await expect(spawn(ctx, lead, 'third-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_LIMIT' })
-    await expect(spawn(ctx, lead, 'fresh-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_NAME_TAKEN' })
+    const reused = await spawn(ctx, lead, 'fresh-worker')
+    expect(reused.reused).toBe(true)
+    expect(reused.member.id).toBe(fresh.member.id)
+    expect(ctx.agentTeams.listMembers(lead)).toHaveLength(3)
+  })
+
+  it('reuses an existing teammate without starting a second child', async () => {
+    const { ctx, lead } = await setup([textResponse('reuse answer')])
+    const first = await spawn(ctx, lead, 'reuse-worker')
+    const activation = vi.spyOn(ctx.subagents, 'startActivation')
+
+    const reused = await spawn(ctx, lead, 'reuse-worker')
+
+    expect(reused.reused).toBe(true)
+    expect(reused.member.id).toBe(first.member.id)
+    expect(activation).not.toHaveBeenCalled()
+    expect(ctx.agentTeams.listMembers(lead)).toHaveLength(2)
   })
 
   it('flushes the accepted child prompt before committing the active roster edge', async () => {
@@ -343,7 +359,13 @@ describe('Team identity and provisioning', () => {
       status: 'failed',
       provider: 'missing',
     })
-    await expect(spawn(ctx, lead, 'failed-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_NAME_TAKEN' })
+    const reused = await spawn(ctx, lead, 'failed-worker')
+    expect(reused.reused).toBe(true)
+    expect(reused.member).toMatchObject({
+      name: 'failed-worker',
+      status: 'failed',
+      diagnostics: [expect.any(String)],
+    })
     await expect(spawn(ctx, lead, 'other-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_LIMIT' })
   })
 

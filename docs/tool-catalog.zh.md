@@ -2311,7 +2311,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
 
 ### `spawn_teammate`
 
-创建一名具名、持久的 teammate。只有 Team Lead 可以调用此工具。
+创建一名具名、持久的 teammate。只有 Team Lead 可以调用此工具。该调用按名称幂等：当 Team 中已存在同名 teammate 时，复用该 teammate 并返回 reused: true，不会启动第二个 teammate，也不会把 prompt 应用给它。使用 send_message 引导被复用的 teammate。
 
 ```json
 {
@@ -2319,7 +2319,7 @@ subagent_oar 工具在为外部提供方配置的别名之间选择。本目录�
   "properties": {
     "name": {
       "type": "string",
-      "description": "Unique lower-kebab-case teammate name."
+      "description": "Lower-kebab-case teammate name. A name already used in this Team reuses that teammate instead of creating one."
     },
     "description": {
       "type": "string",
