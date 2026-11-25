@@ -157,10 +157,10 @@ export class TeamRoster {
   }
 
   /**
-   * Create one named, continuable direct child of the Team Lead.
+   * Create one named, continuable direct child of the Team Lead, or reuse the teammate that already holds that name.
    * @param caller - exact live Lead Agent.
    * @param request - immutable name, description, prompt, context mode, provider, and cancellation.
-   * @returns the active roster row.
+   * @returns the roster row, and whether an existing teammate was reused.
    */
   async spawn(caller: Agent, request: SpawnTeammateRequest): Promise<SpawnTeammateResult> {
     if (this.lifecycle.disposed) throw new TeamError('Agent Teams service is disposing', 'TEAM_DISPOSED')
@@ -225,7 +225,7 @@ export class TeamRoster {
     await this.lifecycle.withTimeout(this.ctx.subagents.drainChildren(root, childIds))
   }
 
-  /** Perform one creation admitted before the Team runtime disposal cutoff. */
+  /** Perform one creation or reuse admitted before the Team runtime disposal cutoff. */
   private async spawnAdmitted(
     caller: Agent,
     request: SpawnTeammateRequest,
@@ -249,16 +249,22 @@ export class TeamRoster {
       phase: 'provisioning',
     }
 
-    await this.journal.transact(root.id, async () => {
+    const existing = await this.journal.transact(root.id, async () => {
       const state = this.journal.state(root)
-      if (state.members.some(member => member.name === name)) {
-        throw new TeamError(`teammate name "${name}" was already used in this Team`, 'TEAM_MEMBER_NAME_TAKEN')
-      }
+      const taken = state.members.find(member => member.name === name)
+      if (taken !== undefined) return taken
       if (state.members.length >= this.maxMembers) {
         throw new TeamError(`Team member limit ${this.maxMembers} reached`, 'TEAM_MEMBER_LIMIT')
       }
       await this.journal.appendAndFlush(root, 'team/member', { version: 2, teamId: TeamId(root.id), member })
+      return undefined
     })
+    if (existing !== undefined) {
+      // A name already used in this Team means the teammate exists. Reusing it keeps
+      // the call idempotent: no second child starts and the new prompt is not
+      // delivered, because the reused teammate may already carry that work.
+      return { member: this.memberView(existing), reused: true }
+    }
 
     try {
       const started = await this.ctx.subagents.startActivation({
@@ -316,7 +322,7 @@ export class TeamRoster {
       }
       throw conflict
     }
-    return { member: this.memberView(active) }
+    return { member: this.memberView(active), reused: false }
   }
 
   /** Flush the accepted initial inbox item before the Lead can commit `active`. */
@@ -416,19 +422,24 @@ export class TeamRoster {
     }
   }
 
-  /** Build one runtime member row after successful creation. */
-  private memberView(member: TeamMemberSnapshot & { readonly phase: 'active' }): TeamMemberView {
+  /** Build one runtime member row from a durable roster entry. */
+  private memberView(member: TeamMemberSnapshot): TeamMemberView {
     const live = this.ctx.agents.get(member.id)
+    const status = member.phase === 'failed'
+      ? 'failed'
+      : member.phase === 'provisioning'
+        ? 'provisioning'
+        : availability(live)
     return {
       id: member.id,
       name: member.name,
       role: 'teammate',
-      status: availability(live),
+      status,
       description: member.description,
       provider: member.provider,
       context: member.context,
       ...live?.options.model === undefined ? {} : { model: live.options.model },
-      diagnostics: [],
+      diagnostics: member.error === undefined ? [] : [member.error],
     }
   }
 

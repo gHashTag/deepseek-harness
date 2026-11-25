@@ -30,7 +30,7 @@ Shared system policy and all tool schemas stay uniform across members; execution
 
 ## Provisioning and recovery
 
-Creation first appends and flushes a `team/member` provisioning snapshot in the Lead Session, then starts the reserved continuable child through the selected fresh or fork provider. Failure before initial inbox acceptance appends a failed snapshot. Success flushes the child's accepted inbox item before appending active. Recovery recognizes that initial message while it is still pending or after it enters user-message history. Names are reserved by the first provisioning record and never reused, including after failure. Disposal closes admission, aborts and awaits admitted creation and send operations, then stops every live child recorded by the roster; a failed child remains cleanup-owned until its Activation exits, and cleanup rejection fails disposal.
+Creation first appends and flushes a `team/member` provisioning snapshot in the Lead Session, then starts the reserved continuable child through the selected fresh or fork provider. Failure before initial inbox acceptance appends a failed snapshot. Success flushes the child's accepted inbox item before appending active. Recovery recognizes that initial message while it is still pending or after it enters user-message history. Names are reserved by the first provisioning record: a later spawn for a reserved name reuses that member instead of failing or creating a second child, so a name never moves to another teammate, including after failure. A reused member is not restarted, and the new prompt is not delivered to it, because the reused teammate may already carry that work; the Lead steers it with `send_message`. Disposal closes admission, aborts and awaits admitted creation and send operations, then stops every live child recorded by the roster; a failed child remains cleanup-owned until its Activation exits, and cleanup rejection fails disposal.
 
 A root recovery reconciles an unterminated provisioning record against the child's independently persisted Session. Matching direct-parent and continuable descriptors plus a recorded initial user message prove successful admission and produce active; absence, corruption, mismatched provider/lineage, or a missing admitted message produces failed. The creator re-reads the terminal phase under the same Lead-log serializer; if recovery marked failed while creation succeeded, it drains the child and reports a provisioning conflict instead of retaining an orphan. This avoids reconstructing an initial prompt that was never retained in the Team log and contains plugin-reload races.
 
@@ -78,6 +78,8 @@ Publication requires `apply` to return a new state object per applied Team event
 
 **Return Team tool results as untyped JSON.** Rejected because an undeclared result type lets `execute` drift from the value the model is promised without a compiler error, and it invites indentation that costs tokens on every roster, task, and receipt. Each Team tool therefore declares its complete result schema and one shared helper renders it compactly.
 
+**Reject a duplicate teammate name.** Rejected because an agent loop that retries a create would stop on a name the Team already holds. Reuse keeps the call idempotent, and the reused member keeps its own work, so the call starts no second child and delivers no second prompt.
+
 ## Testing
 
 Package tests cover Team authority, provisioning durability, task transitions, direct inbox acceptance, sender attribution, lifecycle cancellation, and historical mailbox readability. The keyless Team profile snapshot pins the policy, tools, and workflow; the CLI composition test checks persisted Team and child logs.
@@ -88,6 +90,6 @@ Model-facing member identities and availability follow the [tool projection refe
 
 The Lead Session retains whole task/member snapshots and historical mailbox records. This favors inspectable recovery over compact deltas; deleted and delivered history remains append-only until broader Session retention applies.
 
-An active roster member can be non-resident, so `inactive` is not failure and sends can incur cold-resume latency. Admission failures reject new sends. Historical pending mail is never delivered. Failed provisioning permanently consumes its name and member slot.
+An active roster member can be non-resident, so `inactive` is not failure and sends can incur cold-resume latency. Admission failures reject new sends. Historical pending mail is never delivered. Failed provisioning permanently consumes its name and member slot; a later spawn for that name reuses the failed member and reports its failure instead of creating a replacement.
 
 Coordination reduces likely checkout conflicts but cannot eliminate writes outside filesystem compare-and-set tools. The final diff and tests remain the Lead's integration boundary.

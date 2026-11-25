@@ -150,7 +150,7 @@ describe('dsh-tool-team', () => {
         id: SessionId('private-member-session'), name: 'reviewer', role: 'teammate' as const,
         status, description: 'review changes', diagnostics: [],
       }
-      vi.spyOn(ctx.agentTeams, 'spawnTeammate').mockResolvedValue({ member })
+      vi.spyOn(ctx.agentTeams, 'spawnTeammate').mockResolvedValue({ member, reused: false })
       vi.spyOn(ctx.agentTeams, 'listMembers').mockReturnValue([member])
       const expected = {
         target: 'reviewer', role: 'teammate', status,
@@ -162,7 +162,7 @@ describe('dsh-tool-team', () => {
       const listed = await execute(ctx, lead, 'list_agents', {})
       expect(spawned.isError).toBe(false)
       expect(listed.isError).toBe(false)
-      expect(JSON.parse(text(spawned))).toEqual({ member: expected })
+      expect(JSON.parse(text(spawned))).toEqual({ member: expected, reused: false })
       expect(JSON.parse(text(listed))).toEqual([expected])
       const scope = scopeOf(lead.ctx)
       const spawnSchema = ctx.tools.get('spawn_teammate', scope)?.output.schema.properties?.member
@@ -242,6 +242,29 @@ describe('dsh-tool-team', () => {
     const stored = await execute(ctx, lead, 'list_agents', {})
     expect(JSON.parse(text(stored))).toContainEqual(expect.objectContaining({ target: member.target, status: 'inactive' }))
     expect(ctx.agentTeams.listMembers(lead)[1]).toMatchObject({ id: childId, name: member.target, status: 'inactive' })
+  })
+
+  it('reuses an existing teammate by name without starting a second child', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const first = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'reuse-worker', description: 'reuse work', prompt: 'wait for work',
+    })
+    expect(first.isError, text(first)).toBe(false)
+    const created = JSON.parse(text(first)) as { member: { target: string }; reused: boolean }
+    expect(created.reused).toBe(false)
+    const childId = spawnedChildId(ctx, lead, first)
+    const child = await waitRunning(ctx, childId)
+
+    const second = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'reuse-worker', description: 'reuse work', prompt: 'wait for work',
+    })
+    expect(second.isError, text(second)).toBe(false)
+    const reused = JSON.parse(text(second)) as { member: { target: string }; reused: boolean }
+    expect(reused.reused).toBe(true)
+    expect(reused.member.target).toBe(created.member.target)
+    expect(ctx.agentTeams.listMembers(lead)).toHaveLength(2)
+    expect(ctx.agents.get(childId)).toBe(child)
+    await execute(ctx, lead, 'interrupt_agent', { target: 'reuse-worker' })
   })
 
   it('installs the complete scoped schema and shared-checkout policy for roots and teammates', async () => {

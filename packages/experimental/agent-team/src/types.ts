@@ -171,9 +171,11 @@ export interface SpawnTeammateRequest {
   readonly signal: AbortSignal
 }
 
-/** Result after one teammate reaches a durable active or failed edge. */
+/** Result after one teammate reaches a durable active or failed edge, or an existing teammate is reused. */
 export interface SpawnTeammateResult {
   readonly member: TeamMemberView
+  /** True when a teammate with that name already existed and was reused instead of created. */
+  readonly reused: boolean
 }
 
 /** Input for one direct peer-message attempt. */

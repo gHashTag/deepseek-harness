@@ -30,7 +30,7 @@ Lead 必须等待所需工作后才能给出最终答案。进程 teardown 仍�
 
 ## Provisioning and recovery
 
-创建操作先在 Lead Session 中追加并 flush `team/member` provisioning 快照，再通过选定 fresh 或 fork provider 启动预留的 continuable child。初始 inbox 获准前的失败会追加 failed 快照；成功会先 flush child 中已接受的 inbox 条目，再追加 active。恢复会在初始消息仍处于 pending 或已进入用户消息历史时识别它。名字由第一条 provisioning 记录永久保留，包括失败后也不能复用。dispose 会关闭准入，中止并等待已获准的创建与发送操作，再停止 roster 记录的所有 live child；failed child 在 Activation 退出前仍由 cleanup 拥有，cleanup 拒绝会让 dispose 失败。
+创建操作先在 Lead Session 中追加并 flush `team/member` provisioning 快照，再通过选定 fresh 或 fork provider 启动预留的 continuable child。初始 inbox 获准前的失败会追加 failed 快照；成功会先 flush child 中已接受的 inbox 条目，再追加 active。恢复会在初始消息仍处于 pending 或已进入用户消息历史时识别它。名字由第一条 provisioning 记录永久保留：后续针对已保留名字的 spawn 会复用该成员，既不失败，也不创建第二个 child，因此名字（包括失败之后）不会转移给另一个 teammate。被复用的成员不会重启，新 prompt 也不会交付给它，因为该 teammate 可能已经在执行同样的工作；Lead 用 `send_message` 引导它。dispose 会关闭准入，中止并等待已获准的创建与发送操作，再停止 roster 记录的所有 live child；failed child 在 Activation 退出前仍由 cleanup 拥有，cleanup 拒绝会让 dispose 失败。
 
 Root 恢复时会把未终结 provisioning 记录与独立持久 child Session 对账。直接 parent 与 continuable descriptor 匹配，并且已经记录初始用户消息，才能证明准入成功并转为 active；缺失、损坏、provider／lineage 不匹配或缺少已准入消息都会转为 failed。creator 会在同一 Lead 日志 serializer 内重读终态；如果 recovery 在创建成功时先标记 failed，creator 会 drain child 并报告 provisioning conflict，而不是遗留孤儿。这样既无需重建从未保存在 Team 日志中的初始 prompt，也能约束插件 reload 竞争。
 
@@ -78,6 +78,8 @@ Web panel 读取 Lead Session 的 `agentTeam` 传输投影，因为现有投影�
 
 **让 Team 工具返回未类型化 JSON。** 拒绝，因为未声明的结果类型会让 `execute` 在没有编译错误的情况下偏离对模型的承诺，也会引入在每份 roster、task 与回执上都消耗 token 的缩进。因此每个 Team 工具都声明完整的结果 schema，并由一个共享 helper 紧凑渲染。
 
+**拒绝重复的 teammate 名字。** 拒绝，因为重试创建的 agent loop 会停在 Team 已经持有的名字上。复用让该调用保持幂等，而被复用的成员保留自己的工作，因此该调用既不启动第二个 child，也不交付第二个 prompt。
+
 ## Testing
 
 包测试覆盖 Team 权限、provisioning 持久性、任务转换、直接 inbox 接收、发送者归属、生命周期取消和历史 mailbox 可读性。无密钥 Team profile 快照固定 policy、工具与工作流；CLI 组合测试检查持久 Team 和 child 日志。
@@ -88,6 +90,6 @@ Web panel 读取 Lead Session 的 `agentTeam` 传输投影，因为现有投影�
 
 Lead Session 保留完整 task／member 快照和历史 mailbox 记录。这优先支持可检查的恢复，而不是紧凑增量；deleted 与 delivered 历史在更广泛的 Session 保留策略生效前仍只追加。
 
-active roster 成员可能不驻留，因此 `inactive` 不表示失败，发送可能产生冷恢复延迟。准入失败会拒绝新发送。历史 pending 邮件永远不会被投递。provisioning 失败永久占用其名称和成员槽位。
+active roster 成员可能不驻留，因此 `inactive` 不表示失败，发送可能产生冷恢复延迟。准入失败会拒绝新发送。历史 pending 邮件永远不会被投递。provisioning 失败永久占用其名称和成员槽位；后续针对该名称的 spawn 会复用这个 failed 成员并报告它的失败，而不是创建替代者。
 
 协调可以降低 checkout 冲突概率，但无法消除文件系统 CAS 工具之外的写入。最终 diff 与测试仍是 Lead 的集成边界。

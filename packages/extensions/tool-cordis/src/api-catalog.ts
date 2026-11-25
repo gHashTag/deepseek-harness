@@ -380,9 +380,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'async spawnTeammate(caller: Agent, request: SpawnTeammateRequest): Promise<SpawnTeammateResult>',
-        description: 'Create one named, continuable direct child of the Team Lead.',
+        description: 'Create one named, continuable direct child of the Team Lead, or reuse the teammate that already holds that name.',
         parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'request', description: 'immutable name, description, prompt, context mode, provider, and cancellation.' }],
-        returns: 'the active roster row.',
+        returns: 'the roster row, and whether an existing teammate was reused.',
       },
       {
         signature: 'async sendMessage(caller: Agent, request: SendTeamMessageRequest): Promise<SendTeamMessageResult>',
@@ -9017,7 +9017,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SpawnTeammateResult',
-    declaration: 'export interface SpawnTeammateResult {\n    readonly member: TeamMemberView;\n}',
+    declaration: 'export interface SpawnTeammateResult {\n    readonly member: TeamMemberView;\n    readonly reused: boolean;\n}',
   },
   {
     name: 'SpeechCatalog',

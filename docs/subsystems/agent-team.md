@@ -154,10 +154,10 @@ membership(agent: Agent): TeamMembership
 listMembers(agent: Agent): TeamMemberView[]
 
 /**
- * Create one named, continuable direct child of the Team Lead.
+ * Create one named, continuable direct child of the Team Lead, or reuse the teammate that already holds that name.
  * @param caller - exact live Lead Agent.
  * @param request - immutable name, description, prompt, context mode, provider, and cancellation.
- * @returns the active roster row.
+ * @returns the roster row, and whether an existing teammate was reused.
  */
 async spawnTeammate(caller: Agent, request: SpawnTeammateRequest): Promise<SpawnTeammateResult>
 
